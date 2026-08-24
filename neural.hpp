@@ -8,11 +8,13 @@
 class NN {
     public:
     std::vector<Matrix> biases;
+    std::vector<Matrix> d_biases;
     int layerCount;
     double cost;
     
     std::vector<int> layer_sizes;
     std::vector<Matrix> weights;
+    std::vector<Matrix> d_weights;
     std::vector<std::vector<double>> activations;
     std::vector<std::vector<double>> d_act_funcs;
 

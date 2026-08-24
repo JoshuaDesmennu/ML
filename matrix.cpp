@@ -119,6 +119,12 @@ Matrix Matrix::hadamard(const Matrix& a, const Matrix& b) {
     if (a.rows != b.rows || a.columns != b.columns) {
         throw std::runtime_error("Cannot multiply incompatible matrices");
     }
+
+    Matrix result(a.rows, a.columns);
+    for (int i = 0; i < a.rows * a.columns; i++) {
+        result.values[i] = a.values[i] * b.values[i];
+    }
+    return result;
 }
 
 Matrix& Matrix::scale(double scalar) {
