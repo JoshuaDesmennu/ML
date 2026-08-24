@@ -62,38 +62,28 @@ Matrix NN::passthrough_store(const Matrix& inputs, const Matrix& answer) {
     }
 
     cost = 0.0;
-    int propagateLayer = layerCount - 2;
     Matrix subtracted = result;
     subtracted.subtract(answer);
-    Matrix act_func_matrix = Matrix();
-    act_func_matrix.values = d_act_funcs[propagateLayer];
-    act_func_matrix.rows = act_func_matrix.values.size();
-    act_func_matrix.columns = 1;
-
-    Matrix layer_l_error = Matrix::hadamard(act_func_matrix, subtracted);
-    Matrix prev_activation_matrix = Matrix();
-    prev_activation_matrix.values = activations[propagateLayer-1];
-    prev_activation_matrix.rows = prev_activation_matrix.values.size();
-    prev_activation_matrix.columns = 1;
-
     subtracted.perform(square);
     for (int i = 0; i < subtracted.rows; i++) {
         cost += subtracted.at(i, 0);
     }
     cost *= 0.5;
 
-
-    d_weights[propagateLayer].add(Matrix::multiply(layer_l_error, Matrix::transpose(prev_activation_matrix)));
-    d_biases[propagateLayer].add(layer_l_error);
-    propagateLayer--;
+    Matrix act_func_matrix;
+    Matrix layer_l_error;
+    Matrix prev_activation_matrix;
 
     // backpropagate
-    for (; propagateLayer > 0; propagateLayer--) {
+    for (int propagateLayer = layerCount - 2; propagateLayer > 0; propagateLayer--) {
         act_func_matrix.values = d_act_funcs[propagateLayer];
         act_func_matrix.rows = act_func_matrix.values.size();
         act_func_matrix.columns = 1;
-
-        layer_l_error = Matrix::hadamard(act_func_matrix, Matrix::multiply(Matrix::transpose(weights[propagateLayer+1]), layer_l_error));
+        if (propagateLayer == layerCount - 2) {
+            layer_l_error = Matrix::hadamard(act_func_matrix, subtracted);
+        } else {
+            layer_l_error = Matrix::hadamard(act_func_matrix, Matrix::multiply(Matrix::transpose(weights[propagateLayer+1]), layer_l_error));
+        }
         prev_activation_matrix.values = activations[propagateLayer-1];
         prev_activation_matrix.rows = prev_activation_matrix.values.size();
         prev_activation_matrix.columns = 1;
@@ -101,7 +91,6 @@ Matrix NN::passthrough_store(const Matrix& inputs, const Matrix& answer) {
 
         d_weights[propagateLayer].add(Matrix::multiply(layer_l_error, Matrix::transpose(prev_activation_matrix)));
         d_biases[propagateLayer].add(layer_l_error);
-
     }
 
     return result;
