@@ -11,6 +11,7 @@ class NN {
     std::vector<Matrix> d_biases;
     int layerCount;
     double cost;
+    double previousCost;
     
     std::vector<int> layer_sizes;
     std::vector<Matrix> weights;
@@ -24,7 +25,8 @@ class NN {
     // takes in a 1-column matrix of 784 inputs normalized between 0 and 1
     // Returns a 1-column matrix of 10 values corresponding with 0 through to 9
     Matrix passthrough(const Matrix& inputs);
-    Matrix passthrough_store(const Matrix& inputs, const Matrix& answer);
+    Matrix train(const Matrix& inputs, const Matrix& answer);
+    void descend_gradient(int sample_size, double eta);
     void save_to_file(std::string filename);
 };
 

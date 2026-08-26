@@ -28,7 +28,9 @@ class Matrix {
     static Matrix multiply(const Matrix& a, const Matrix& b);
     static Matrix transpose(const Matrix& a);
     static Matrix hadamard(const Matrix& a, const Matrix& b);
-
+    
+    void print_by_column();
+    void print_by_row();
     template <typename F>
     void perform(F func) {
         for (auto& value : values) {

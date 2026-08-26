@@ -89,8 +89,7 @@ std::vector<std::pair<Matrix, Matrix>> LabelledImageData::selectRandomImageLabel
     
     for (int i = 0; i < count; i++) {
         int random_index = dist(rng);
-        pairs[i].first = getEntryImage(random_index);
-        pairs[i].first.flatten();
+        pairs[i].first = getEntryImage(random_index).scale(1.0 / 255.0).flatten();
         pairs[i].second = getEntryExpectedAnswer(random_index);
     }
 

@@ -27,14 +27,30 @@ int main(int argc, char **argv) {
         imgSizes[2]
     );
 
-    // NN network(std::vector<int>{28*28, 16, 16, 10}, rng);
-    NN network("best_nn_yet.nn");
-    auto training_data = training_set.getEntryPair(2);
-    Matrix result = network.passthrough_store(training_data.first, training_data.second);
-    std::cout << "The cost is " << network.cost  << "\n";
-    for (auto item : result.values) {
-        std::cout << item << ", ";
+    NN network(std::vector<int>{28*28, 16, 16, 10}, rng);
+    Matrix result;
+    // const int passNumber = 100;
+    const int sampleSize = 1000;
+    std::vector<std::pair<Matrix, Matrix>> training_data;
+    training_data = training_set.selectRandomImageLabelPairs(sampleSize, rng);
+
+    std::cout << "BEFORE\n";
+    result = network.passthrough(training_data[0].first);
+    result.print_by_column();
+    training_data[0].second.print_by_column();
+
+    for (auto& item : training_data) {
+        network.train(item.first, item.second);
     }
-    std::cout << "\nThe image is a " << training_set.getEntryLabel(2);
+    network.descend_gradient(sampleSize, 0.1);
+
+    std::cout << "AFTER\n";
+    result = network.passthrough(training_data[0].first);
+    result.print_by_column();
+    training_data[0].second.print_by_column();
+
+
+    network.save_to_file("bp_nn.nn");
+    
 
 }

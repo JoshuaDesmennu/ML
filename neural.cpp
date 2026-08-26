@@ -24,9 +24,9 @@ NN::NN(std::vector<int> layer_sizes, std::mt19937& rng) : layer_sizes(layer_size
     d_act_funcs = std::vector<std::vector<double>>(layerCount, std::vector<double>{});
 
     for (int i = 0; i < layerCount-1; i++) {
-        weights.emplace_back(layer_sizes.at(i+1), layer_sizes.at(i), rng, 0.2);
+        weights.emplace_back(layer_sizes.at(i+1), layer_sizes.at(i), rng, sqrtf64(6.0 / (double)(layer_sizes[i]+layer_sizes[i+1])));
         d_weights.emplace_back(layer_sizes.at(i+1), layer_sizes.at(i));
-        biases.emplace_back(layer_sizes.at(i+1), 1, rng, 0.2);
+        biases.emplace_back(layer_sizes.at(i+1), 1);
         d_biases.emplace_back(layer_sizes.at(i+1), 1);
         activations[i].reserve(layer_sizes[i+1]);
         d_act_funcs[i].reserve(layer_sizes[i+1]);
@@ -43,7 +43,7 @@ Matrix NN::passthrough(const Matrix& inputs) {
     return result;
 }
 
-Matrix NN::passthrough_store(const Matrix& inputs, const Matrix& answer) {
+Matrix NN::train(const Matrix& inputs, const Matrix& answer) {
     Matrix result = inputs;
     for (int i = 0; i < layerCount - 1; i++) {
         // typical feedforward step
@@ -61,40 +61,56 @@ Matrix NN::passthrough_store(const Matrix& inputs, const Matrix& answer) {
 
     }
 
+    previousCost = cost;
     cost = 0.0;
     Matrix subtracted = result;
     subtracted.subtract(answer);
-    subtracted.perform(square);
-    for (int i = 0; i < subtracted.rows; i++) {
-        cost += subtracted.at(i, 0);
-    }
-    cost *= 0.5;
 
     Matrix act_func_matrix;
     Matrix layer_l_error;
     Matrix prev_activation_matrix;
 
     // backpropagate
-    for (int propagateLayer = layerCount - 2; propagateLayer > 0; propagateLayer--) {
+    for (int propagateLayer = layerCount - 2; propagateLayer >= 0; propagateLayer--) {
         act_func_matrix.values = d_act_funcs[propagateLayer];
         act_func_matrix.rows = act_func_matrix.values.size();
         act_func_matrix.columns = 1;
+        // if just started, use subtracted or nabla_aL_C
         if (propagateLayer == layerCount - 2) {
             layer_l_error = Matrix::hadamard(act_func_matrix, subtracted);
         } else {
             layer_l_error = Matrix::hadamard(act_func_matrix, Matrix::multiply(Matrix::transpose(weights[propagateLayer+1]), layer_l_error));
         }
-        prev_activation_matrix.values = activations[propagateLayer-1];
-        prev_activation_matrix.rows = prev_activation_matrix.values.size();
-        prev_activation_matrix.columns = 1;
 
+        // if at first non input layer, use input as the previous activation
+        if (propagateLayer == 0) {
+            prev_activation_matrix = inputs;
+        } else {
+            prev_activation_matrix.values = activations[propagateLayer-1];
+            prev_activation_matrix.rows = prev_activation_matrix.values.size();
+            prev_activation_matrix.columns = 1;
+        }
 
         d_weights[propagateLayer].add(Matrix::multiply(layer_l_error, Matrix::transpose(prev_activation_matrix)));
         d_biases[propagateLayer].add(layer_l_error);
     }
 
-    return result;
+    subtracted.perform(square);
+    for (int i = 0; i < subtracted.rows; i++) {
+        cost += subtracted.at(i, 0);
+    }
+    cost *= 0.5;
 
+    return result;
+}
+
+void NN::descend_gradient(int sample_size, double eta) {
+    for (unsigned int i = 0; i < weights.size(); i++) {
+        weights[i].subtract(Matrix::scale(d_weights[i], eta / sample_size));
+        biases[i].subtract(Matrix::scale(d_biases[i], eta / sample_size));
+        d_weights[i].values = std::vector<double>(d_weights[i].rows * d_weights[i].columns, 0);
+        d_biases[i].values = std::vector<double>(d_biases[i].rows * d_biases[i].columns, 0);
+    }
 }
 
 uint8_t get_byte(uint64_t number, int byte_position) {

@@ -162,3 +162,23 @@ Matrix Matrix::multiply(const Matrix& a, const Matrix& b) {
     }
     return res;
 }
+
+void Matrix::print_by_row() {
+    for (int i = 0; i < rows; i++) {
+        std::cout << "|";
+        for (int j = 0; j < columns; j++) {
+            std::cout << at(i, j) << ", ";
+        }
+        std::cout << "|\n";
+    }
+}
+
+void Matrix::print_by_column() {
+    for (int i = 0; i < columns; i++) {
+        std::cout << "|";
+        for (int j = 0; j < rows; j++) {
+            std::cout << at(j, i) << ", ";
+        }
+        std::cout << "|\n";
+    }
+}
