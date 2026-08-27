@@ -7,6 +7,16 @@ double sigmoid(double x) {
     return 1.0 / (1.0 + std::exp(-x));
 }
 
+void softmax(Matrix& input) {
+    double denominator = 0;
+    for (int i = 0; i < (int)input.values.size(); i++) {
+        denominator += expf64(input.values[i]);
+    }
+    for (auto& value : input.values) {
+        value = expf64(value) / denominator;
+    }
+}
+
 double square (double x) {
     return powf64(x, 2);
 }
@@ -49,20 +59,32 @@ Matrix NN::train(const Matrix& inputs, const Matrix& answer) {
         // typical feedforward step
         result = Matrix::multiply(weights[i], result);
         result.add(biases[i]);
-        result.perform(sigmoid);
+
+        if (i == layerCount - 2) {
+            softmax(result);
+        } else {
+            result.perform(sigmoid);
+        }
 
         // store activations
         activations[i] = result.values;
         // store derivatives of sigmoid
-        d_act_funcs[i] = result.values;
-        for (auto &value : d_act_funcs[i]) {
-            value = value * (1 - value);
+        if (i < layerCount - 2) {
+            d_act_funcs[i] = result.values;
+            for (auto &value : d_act_funcs[i]) {
+                value = value * (1 - value);
+            }
         }
-
     }
 
     previousCost = cost;
     cost = 0.0;
+
+    // cross-entropy
+    for (int i = 0; i < result.rows; i++) {
+        cost -= answer.at(i, 0) * std::log(result.at(i, 0));
+    }
+
     Matrix subtracted = result;
     subtracted.subtract(answer);
 
@@ -77,7 +99,7 @@ Matrix NN::train(const Matrix& inputs, const Matrix& answer) {
         act_func_matrix.columns = 1;
         // if just started, use subtracted or nabla_aL_C
         if (propagateLayer == layerCount - 2) {
-            layer_l_error = Matrix::hadamard(act_func_matrix, subtracted);
+            layer_l_error = subtracted;
         } else {
             layer_l_error = Matrix::hadamard(act_func_matrix, Matrix::multiply(Matrix::transpose(weights[propagateLayer+1]), layer_l_error));
         }
@@ -95,11 +117,12 @@ Matrix NN::train(const Matrix& inputs, const Matrix& answer) {
         d_biases[propagateLayer].add(layer_l_error);
     }
 
-    subtracted.perform(square);
-    for (int i = 0; i < subtracted.rows; i++) {
-        cost += subtracted.at(i, 0);
-    }
-    cost *= 0.5;
+    // mean square error
+    // subtracted.perform(square);
+    // for (int i = 0; i < subtracted.rows; i++) {
+    //     cost += subtracted.at(i, 0);
+    // }
+    // cost *= 0.5;
 
     return result;
 }

@@ -22,9 +22,10 @@ int main(int argc, char** argv) {
         imgSizes[2]
     );
 
-    NN model("best_nn_yet.nn");
-    training_set.drawEntryImage(std::stoi(argv[1]));
-    Matrix result = model.passthrough(training_set.getEntryImage(0).flatten());
+    NN model("bp_nn.nn");
+    int number = std::stoi(args[1]);
+    training_set.drawEntryImage(number);
+    Matrix result = model.passthrough(training_set.getEntryImage(number).flatten());
     for (int i = 0; i < result.rows; i++) {
         std::cout << i << ": " <<result.at(i, 0) << "\n";
     }
