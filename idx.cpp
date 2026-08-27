@@ -60,6 +60,17 @@ Matrix LabelledImageData::getEntryImage(int index) {
     );
 }
 
+std::vector<uint8_t> LabelledImageData::getRawImageBytes(int index) {
+    if (index < 0 || index >= entry_count) {
+        throw std::runtime_error("Index out of bounds");
+    }
+
+    return std::vector<uint8_t>(
+            imagedata.begin() + (width * height) * index,
+            imagedata.begin() + (width * height) * (index + 1)
+        );
+}
+
 
 Matrix LabelledImageData::getEntryExpectedAnswer(int index) {
     Matrix res(10, 1);
@@ -110,6 +121,6 @@ void LabelledImageData::drawEntryImage(int index) {
 
 std::pair<Matrix, Matrix> LabelledImageData::getEntryPair(int index) {
     return std::pair<Matrix, Matrix>{
-        getEntryImage(index).flatten(), getEntryExpectedAnswer(index)
+        getEntryImage(index).scale(1.0 / 255.0).flatten(), getEntryExpectedAnswer(index)
     };
 }
