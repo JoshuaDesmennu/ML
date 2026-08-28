@@ -10,30 +10,38 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
+enum AppMode
+{
+    START,
+    USER_DRAW,
+    SCROLL_THROUGH
+};
 
-
-class Graphix {
+class Graphix
+{
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Event e;
     std::vector<uint8_t> image_data;
     Matrix prediction;
-    std::unordered_map<std::string, SDL_Texture*> textures;
+    std::unordered_map<std::string, SDL_Texture *> textures;
     TTF_Font *font;
     bool is_mouse_down = false;
-    std::pair<double, double> mouse_coords;
+    std::pair<int, int> mouse_coords;
     const int padding = 20;
     const int drawing_rect_size = 560;
 
-    public:
+public:
     AppMode mode;
     int selectedImage = 0;
     int window_width;
     int window_height;
     bool should_quit;
+    std::unordered_map<std::string, bool> is_button_hovered;
     int brush_radius = 0;
     const std::string test_text = "Hello testing 1, 2, 3...";
-    Graphix() {
+    Graphix()
+    {
         mode = START;
         window_width = 1280;
         window_height = 720;
@@ -41,30 +49,35 @@ class Graphix {
         image_data = std::vector<uint8_t>(28 * 28, 0);
         prediction = Matrix(10, 1);
 
-        if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        if (SDL_Init(SDL_INIT_VIDEO) != 0)
+        {
             throw std::runtime_error("Could not initialize SDL");
         }
 
-        if(TTF_Init() != 0) {
+        if (TTF_Init() != 0)
+        {
             SDL_Quit();
             throw std::runtime_error("Could not initialize TTF");
         }
 
         font = TTF_OpenFont("./intel_variable.ttf", 25);
-        if (font == nullptr) {
+        if (font == nullptr)
+        {
             TTF_Quit();
             SDL_Quit();
             throw std::runtime_error("Could not open font for use");
         }
 
         window = SDL_CreateWindow("Number Guesser", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, SDL_WINDOW_SHOWN);
-        if (window == NULL) {
+        if (window == NULL)
+        {
             SDL_Quit();
             throw std::runtime_error("Could not create window");
         }
 
         renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-        if (renderer == NULL) {
+        if (renderer == NULL)
+        {
             SDL_DestroyWindow(window);
             SDL_Quit();
             throw std::runtime_error("Could not create window renderer");
@@ -72,109 +85,177 @@ class Graphix {
 
         SDL_Surface *surface = NULL;
         const SDL_Color white = {.r = 255, .g = 255, .b = 255, .a = 255};
-        for (int i = 0; i < 10; i++) {
-            const std::string number_str =  std::to_string(i);
+        for (int i = 0; i < 10; i++)
+        {
+            const std::string number_str = std::to_string(i);
             surface = TTF_RenderUTF8_Blended(font, number_str.c_str(), white);
             textures[number_str] = SDL_CreateTextureFromSurface(renderer, surface);
+            SDL_FreeSurface(surface);
         }
+
+        TTF_SetFontSize(font, 70);
+        surface = TTF_RenderUTF8_Blended(font, "Bienvenue au MIA", white);
+        textures["Bienvenue au MIA"] = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+
+        TTF_SetFontSize(font, 30);
+        surface = TTF_RenderUTF8_Blended(font, "Commence", white);
+        textures["Commence"] = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+
+        surface = TTF_RenderUTF8_Blended(font, "Quitte", white);
+        textures["Quitte"] = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+
+        is_button_hovered["Commence"] = false;
+        is_button_hovered["Quitte"] = false;
     }
 
-    void putMousePathToImage() {
+    void putMousePathToImage()
+    {
 
-        if (mouse_coords.first < padding || mouse_coords.first > padding + drawing_rect_size || mouse_coords.second < padding || mouse_coords.second > padding + drawing_rect_size) return;
+        if (mouse_coords.first < padding || mouse_coords.first > padding + drawing_rect_size || mouse_coords.second < padding || mouse_coords.second > padding + drawing_rect_size)
+            return;
         const int image_width = 28;
         const int effectiveX = (mouse_coords.first - padding) / (drawing_rect_size / image_width);
         const int effectiveY = (mouse_coords.second - padding) / (drawing_rect_size / image_width);
 
-        for (int x = effectiveX - brush_radius; x <= effectiveX + brush_radius; x++) {
-            if (x < 0 || x > 27) continue;
-            for (int y = effectiveY - brush_radius; y <= effectiveY + brush_radius; y++) {
-                if (y < 0 || y > 27) continue;
+        for (int x = effectiveX - brush_radius; x <= effectiveX + brush_radius; x++)
+        {
+            if (x < 0 || x > 27)
+                continue;
+            for (int y = effectiveY - brush_radius; y <= effectiveY + brush_radius; y++)
+            {
+                if (y < 0 || y > 27)
+                    continue;
                 int pixel_index = x + image_width * y;
                 int additive;
-                if (brush_radius == 0) {
+                if (brush_radius == 0)
+                {
                     additive = 255;
-                } else {
+                }
+                else
+                {
                     additive = 255.0 * (1.0 - (std::hypot(x - effectiveX, y - effectiveY) / std::hypot(brush_radius, brush_radius)));
                 }
-                if (additive + image_data[pixel_index] > 255) {
+                if (additive + image_data[pixel_index] > 255)
+                {
                     image_data[pixel_index] = 255;
-                } else {
+                }
+                else
+                {
                     image_data[pixel_index] += additive;
                 }
             }
         }
-
-
     }
 
-    void cycle(LabelledImageData& img_provider, std::function<Matrix(int)> guess, std::function<Matrix(const std::vector<uint8_t>&)> guess_user_drawn) {
-        if (should_quit) return;
+    void cycle(LabelledImageData &img_provider, std::function<Matrix(int)> guess, std::function<Matrix(const std::vector<uint8_t> &)> guess_user_drawn)
+    {
+        if (should_quit)
+            return;
 
         // handle events like clicks and that
-        while (SDL_PollEvent(&e) != 0) {
-            if (e.type == SDL_QUIT) {
+        while (SDL_PollEvent(&e) != 0)
+        {
+            if (e.type == SDL_QUIT)
+            {
                 should_quit = true;
-            } else if (e.type == SDL_KEYUP) {
-                if (mode == SCROLL_THROUGH) {
-                    if (e.key.keysym.sym == SDLK_LEFT) {
-                        if (selectedImage >= 1) {
+            }
+            else if (e.type == SDL_KEYUP)
+            {
+                if (mode == SCROLL_THROUGH)
+                {
+                    if (e.key.keysym.sym == SDLK_LEFT)
+                    {
+                        if (selectedImage >= 1 && mode == SCROLL_THROUGH)
+                        {
                             selectedImage--;
                             updateImage(img_provider.getRawImageBytes(selectedImage));
                             prediction = guess(selectedImage);
                         }
-                    } else if (e.key.keysym.sym == SDLK_RIGHT) {
-                        if (selectedImage <= img_provider.entry_count - 2) {
+                    }
+                    else if (e.key.keysym.sym == SDLK_RIGHT)
+                    {
+                        if (selectedImage <= img_provider.entry_count - 2 && mode == SCROLL_THROUGH)
+                        {
                             selectedImage++;
                             updateImage(img_provider.getRawImageBytes(selectedImage));
                             prediction = guess(selectedImage);
                         }
-                    } 
+                    }
                 }
-                if (e.key.keysym.sym == SDLK_c) {
+                if (e.key.keysym.sym == SDLK_c)
+                {
                     image_data = std::vector<uint8_t>(image_data.size(), 0);
                 }
-            } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+            }
+            else if (e.type == SDL_MOUSEBUTTONDOWN)
+            {
                 is_mouse_down = true;
                 mouse_coords.first = e.button.x;
                 mouse_coords.second = e.button.y;
-            } else if (e.type == SDL_MOUSEBUTTONUP) {
+                if (mode == USER_DRAW)
+                    prediction = guess_user_drawn(image_data);
+                if (mode == START) {
+                    if (is_button_hovered["Commence"]) {
+                        mode = SCROLL_THROUGH;
+                    } else if (is_button_hovered["Quitte"]) {
+                        should_quit = true;
+                    }
+                }
+
+            }
+            else if (e.type == SDL_MOUSEBUTTONUP)
+            {
                 is_mouse_down = false;
                 mouse_coords.first = e.button.x;
                 mouse_coords.second = e.button.y;
-                prediction = guess_user_drawn(image_data);
-            } else if (e.type == SDL_MOUSEMOTION) {
-                mouse_coords.first = e.motion.x;
-                mouse_coords.second = e.motion.y;
             }
+            // else if (e.type == SDL_MOUSEMOTION)
+            // {
+            //     mouse_coords.first = e.motion.x;
+            //     mouse_coords.second = e.motion.y;
+            // }
         }
 
-        if (mode == USER_DRAW) {
-            if (is_mouse_down) {
+        // clear the screen for drawing
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        if (mode == USER_DRAW)
+        {
+            if (is_mouse_down)
+            {
                 putMousePathToImage();
             }
         }
 
-        if (mode == SCROLL_THROUGH || mode == USER_DRAW) {
-            // render
-            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-            SDL_RenderClear(renderer);
+        if (mode == SCROLL_THROUGH || mode == USER_DRAW)
+        {
+            if (TTF_FontHeight(font) != 25)
+            {
+                TTF_SetFontSize(font, 25);
+            }
 
             const SDL_Rect border_rectangle = {
-                padding, padding, drawing_rect_size, drawing_rect_size,
+                padding,
+                padding,
+                drawing_rect_size,
+                drawing_rect_size,
             };
 
             // draw image pixels
             const int pixel_size = 20;
-            for (int i = 0; i < (int)image_data.size(); i++) {
+            for (int i = 0; i < (int)image_data.size(); i++)
+            {
                 const int x = i % 28;
                 const int y = i / 28;
                 const SDL_Rect pixel_rectangle = {
-                    .x = padding + x * pixel_size, 
-                    .y = padding + y * pixel_size, 
-                    .w = pixel_size, 
-                    .h = pixel_size
-                };
+                    .x = padding + x * pixel_size,
+                    .y = padding + y * pixel_size,
+                    .w = pixel_size,
+                    .h = pixel_size};
                 SDL_SetRenderDrawColor(renderer, image_data[i], image_data[i], image_data[i], 255);
                 SDL_RenderFillRect(renderer, &pixel_rectangle);
             }
@@ -189,7 +270,8 @@ class Graphix {
             SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 
             const int spacing = 10;
-            for (int i = 0; i < prediction.rows; i++) {
+            for (int i = 0; i < prediction.rows; i++)
+            {
                 const std::string number_text = std::to_string(i);
                 SDL_Rect text_rect = {
                     .x = padding + drawing_rect_size + spacing,
@@ -215,27 +297,111 @@ class Graphix {
                 };
                 SDL_RenderDrawRect(renderer, &full_rect);
             }
-
-
         }
-        
+
+        if (mode == START)
+        {
+
+            SDL_GetMouseState(&mouse_coords.first, &mouse_coords.second);
+            SDL_Rect commence_rect;
+            // title
+            TTF_SetFontSize(font, 70);
+            std::string text = "Bienvenue au MIA";
+            TTF_SizeText(font, text.c_str(), &commence_rect.w, &commence_rect.h);
+            commence_rect.x = (window_width / 2) - (commence_rect.w / 2);
+            commence_rect.y = (window_height / 2) - (commence_rect.h) - padding;
+            SDL_RenderCopy(renderer, textures[text], nullptr, &commence_rect);
+
+            TTF_SetFontSize(font, 30);
+
+            text = "Commence";
+            TTF_SizeText(font, text.c_str(), &commence_rect.w, &commence_rect.h);
+            commence_rect.x = (window_width / 2) - (commence_rect.w + 20) - padding;
+            commence_rect.y = (window_height / 2) + padding + 10;
+            if (is_button_hovered[text])
+            {
+                SDL_SetTextureColorMod(textures[text], 0, 0, 0);
+            }
+            else
+            {
+                SDL_SetTextureColorMod(textures[text], 255, 255, 255);
+            }
+
+            SDL_Rect commence_border = commence_rect;
+            commence_border.x -= 10;
+            commence_border.y -= 10;
+            commence_border.w += 20;
+            commence_border.h += 20;
+            // set hovering flag if within bounding box
+            is_button_hovered[text] = (mouse_coords.first > commence_border.x && mouse_coords.first < commence_border.x + commence_border.w && mouse_coords.second > commence_border.y && mouse_coords.second < commence_border.y + commence_border.h);
+
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            if (is_button_hovered[text] == true)
+            {
+                SDL_RenderFillRect(renderer, &commence_border);
+            }
+            else
+            {
+                SDL_RenderDrawRect(renderer, &commence_border);
+            }
+            SDL_RenderCopy(renderer, textures[text], nullptr, &commence_rect);
+
+            text = "Quitte";
+            TTF_SizeText(font, text.c_str(), &commence_rect.w, &commence_rect.h);
+            commence_rect.x = (window_width / 2) + padding + 10;
+            commence_rect.y = (window_height / 2) + padding + 10;
+
+            commence_border = commence_rect;
+            commence_border.x -= 10;
+            commence_border.y -= 10;
+            commence_border.w += 20;
+            commence_border.h += 20;
+
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            is_button_hovered[text] = (mouse_coords.first > commence_border.x && mouse_coords.first < commence_border.x + commence_border.w && mouse_coords.second > commence_border.y && mouse_coords.second < commence_border.y + commence_border.h);
+            if (is_button_hovered[text])
+            {
+                SDL_SetTextureColorMod(textures[text], 0, 0, 0);
+            }
+            else
+            {
+                SDL_SetTextureColorMod(textures[text], 255, 255, 255);
+            }
+
+            // put both back and text to the screen
+            if (is_button_hovered[text] == true)
+            {
+                SDL_RenderFillRect(renderer, &commence_border);
+            }
+            else
+            {
+                SDL_RenderDrawRect(renderer, &commence_border);
+            }
+            SDL_RenderCopy(renderer, textures[text], nullptr, &commence_rect);
+        }
+
         SDL_RenderPresent(renderer);
     }
 
-    void updateImage(const std::vector<uint8_t>& image) {
-        if (image.size() != image_data.size()) {
+    void updateImage(const std::vector<uint8_t> &image)
+    {
+        if (image.size() != image_data.size())
+        {
             throw std::runtime_error("Cannot assign image with different dimensions");
         }
         image_data = image;
     }
 
-    void free_textures() {
-        for (auto& pair : textures) {
+    void free_textures()
+    {
+        for (auto &pair : textures)
+        {
             SDL_DestroyTexture(pair.second);
         }
     }
 
-    ~Graphix() {
+    ~Graphix()
+    {
         free_textures();
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
@@ -243,16 +409,10 @@ class Graphix {
     }
 };
 
-enum AppMode {
-    START,
-    USER_DRAW,
-    SCROLL_THROUGH
-};
-
-
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     std::mt19937 rng(std::random_device{}());
-    std::vector<std::string> args(argv, argv+argc);
+    std::vector<std::string> args(argv, argv + argc);
     std::vector<uint8_t> imageFileData = idx::read_file("./training_images/train-images.idx3-ubyte");
     std::vector<uint8_t> labelFileData = idx::read_file("./training_labels/train-labels.idx1-ubyte");
     auto [imgSizes, imgIndex] = idx::decode_idx(imageFileData);
@@ -260,37 +420,34 @@ int main(int argc, char **argv) {
 
     LabelledImageData training_set(
         std::vector<uint8_t>(
-            labelFileData.begin() + lblIndex, labelFileData.end()
-        ),
+            labelFileData.begin() + lblIndex, labelFileData.end()),
         std::vector<uint8_t>(
-            imageFileData.begin() + imgIndex, imageFileData.end()
-        ),
+            imageFileData.begin() + imgIndex, imageFileData.end()),
         imgSizes[0],
         imgSizes[1],
-        imgSizes[2]
-    );
-
+        imgSizes[2]);
 
     NN network("best_nn.nn");
     auto data = training_set.getRawImageBytes(2);
-    auto guess = [&](int index) {
-        return network.passthrough(training_set.getEntryImage(index).scale(1.0/255.0).flatten());
+    auto guess = [&](int index)
+    {
+        return network.passthrough(training_set.getEntryImage(index).scale(1.0 / 255.0).flatten());
     };
-    auto guess_user_drawn = [&](const std::vector<uint8_t>& image_data) {
+    auto guess_user_drawn = [&](const std::vector<uint8_t> &image_data)
+    {
         Matrix input = Matrix();
         input.rows = training_set.width * training_set.height;
         input.columns = 1;
         input.values = std::vector<double>(image_data.begin(), image_data.end());
-        return network.passthrough(input.scale(1.0/255.0).flatten());
+        return network.passthrough(input.scale(1.0 / 255.0).flatten());
     };
     Graphix gfx;
     // gfx.updateImage(data);
     guess(gfx.selectedImage);
-    while(!gfx.should_quit) {
+    while (!gfx.should_quit)
+    {
         gfx.cycle(training_set, guess, guess_user_drawn);
     }
-
-
 
     // NN network(std::vector<int>{28*28, 16, 16, 10}, rng);
     // Matrix result;
