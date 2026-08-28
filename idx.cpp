@@ -78,6 +78,12 @@ Matrix LabelledImageData::getEntryExpectedAnswer(int index) {
     return res;
 }
 
+Matrix LabelledImageData::getExpectedAnswerFromLabelNumber(int label) {
+    Matrix res(10, 1);
+    res.set(label, 0, 1);
+    return res;
+}
+
 int LabelledImageData::getEntryLabel(int index) {
     if (index < 0 || index >= entry_count) {
         throw std::runtime_error("Index out of bounds");
@@ -92,6 +98,14 @@ LabelledImageData::LabelledImageData(std::vector<uint8_t> labels, std::vector<ui
     this->width = width;
     this->height = height;
     this->entry_count = entry_count;
+    
+    imagesByLabel = std::vector<std::vector<Matrix>>(10, std::vector<Matrix>());
+    for (auto& v : imagesByLabel) {
+        v.reserve(1000);
+    }
+    for (int i = 0; i < entry_count; i++) {
+        imagesByLabel[getEntryLabel(i)].push_back(getEntryImage(i));
+    }
 }
 
 std::vector<std::pair<Matrix, Matrix>> LabelledImageData::selectRandomImageLabelPairs(int count, std::mt19937& rng) {
@@ -118,6 +132,36 @@ void LabelledImageData::drawEntryImage(int index) {
     }
 }
 
+std::vector<std::pair<Matrix, Matrix>> LabelledImageData::selectImageLabelPairsOfLabel(int count, std::vector<int> labels, std::mt19937& rng) {
+    if (labels.size() <= 0) {
+        throw std::runtime_error("Must specify at least one label.");
+    } else if (count <= 0) {
+        throw std::runtime_error("Count requested must be above zero");
+    }
+    std::vector<std::pair<Matrix, Matrix>> pairs(count);
+    int items_gotten = 0;
+
+    const int count_per_label = count / labels.size();
+    for (int label : labels) {
+        std::uniform_int_distribution dist(0, (int)imagesByLabel[label].size()-1);
+        for (int i = 0; i < count_per_label; i++) {
+            int random_index = dist(rng);
+            pairs[items_gotten].first = (imagesByLabel[label][random_index]).scale(1.0 / 255.0).flatten();
+            pairs[items_gotten].second = getExpectedAnswerFromLabelNumber(label);
+            items_gotten++;
+        }
+    }
+
+    const int label = labels[0];
+    std::uniform_int_distribution dist(0, (int)imagesByLabel[label].size()-1);
+    for (int i = 0; items_gotten < count; i++) {
+        int random_index = dist(rng);
+        pairs[items_gotten].first = (imagesByLabel[label][random_index]).scale(1.0 / 255.0).flatten();
+        pairs[items_gotten].second = getExpectedAnswerFromLabelNumber(label);
+        items_gotten++;
+    }
+    return pairs;
+}
 
 std::pair<Matrix, Matrix> LabelledImageData::getEntryPair(int index) {
     return std::pair<Matrix, Matrix>{

@@ -21,6 +21,7 @@ class LabelledImageData {
     int width;
     int height;
     int entry_count;
+    std::vector<std::vector<Matrix>> imagesByLabel;
 
     LabelledImageData(std::vector<uint8_t> labels, std::vector<uint8_t> imagedata, int width, int height, int entry_count);
     Matrix getEntryImage(int index);
@@ -28,6 +29,8 @@ class LabelledImageData {
     Matrix getEntryExpectedAnswer(int index);
     std::pair<Matrix, Matrix> getEntryPair(int index);
     std::vector<std::pair<Matrix, Matrix>> selectRandomImageLabelPairs(int count, std::mt19937& rng);
+    std::vector<std::pair<Matrix, Matrix>> selectImageLabelPairsOfLabel(int count, std::vector<int> labels, std::mt19937& rng);
+    Matrix getExpectedAnswerFromLabelNumber(int label);
     std::vector<uint8_t> getRawImageBytes(int index);
     void drawEntryImage(int index);
 };

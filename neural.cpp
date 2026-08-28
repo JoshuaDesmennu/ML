@@ -10,10 +10,10 @@ double sigmoid(double x) {
 void softmax(Matrix& input) {
     double denominator = 0;
     for (int i = 0; i < (int)input.values.size(); i++) {
-        denominator += expf64(input.values[i]);
+        denominator += std::exp(input.values[i]);
     }
     for (auto& value : input.values) {
-        value = expf64(value) / denominator;
+        value = std::exp(value) / denominator;
     }
 }
 
@@ -48,7 +48,12 @@ Matrix NN::passthrough(const Matrix& inputs) {
     for (int i = 0; i < layerCount - 1; i++) {
         result = Matrix::multiply(weights[i], result);
         result.add(biases[i]);
-        result.perform(sigmoid);
+
+        if (i == layerCount - 2) {
+            softmax(result);
+        } else {
+            result.perform(sigmoid);
+        }
     }
     return result;
 }
