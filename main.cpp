@@ -49,27 +49,4 @@ int main(int argc, char **argv)
     {
         gfx.cycle(training_set, guess, guess_user_drawn);
     }
-
-    // NN network(std::vector<int>{28*28, 16, 16, 10}, rng);
-    // Matrix result;
-    // const int passNumber = 10000;
-    // const int sampleSize = 10000;
-
-    // std::vector<std::pair<Matrix, Matrix>> training_data;
-    // training_data.reserve(training_set.entry_count);
-    // for (int label = 0; label < 10; label++) {
-    //     for (auto& m : training_set.imagesByLabel[label]) {
-    //         training_data.emplace_back(m.scale(1.0/255.0).flatten(), training_set.getExpectedAnswerFromLabelNumber(label));
-    //     }
-    // }
-
-    // for (int i = 0; i < passNumber; i++) {
-    //     for (auto& pair : training_data) {
-    //         network.train(pair.first, pair.second);
-    //     }
-    //     network.descend_gradient(sampleSize, 0.01);
-    //     std::cout << "Cost: " << network.cost << "\n";
-    // }
-
-    // network.save_to_file("bp_nn.nn");
 }
