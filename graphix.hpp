@@ -5,7 +5,7 @@
 #include "matrix.hpp"
 #include "idx.hpp"
 #include <SDL2/SDL_ttf.h>
-
+#include "input_info.hpp"
 
 enum AppMode
 {
@@ -25,8 +25,11 @@ class Graphix
     TTF_Font *font;
     bool is_mouse_down = false;
     std::pair<int, int> mouse_coords;
+    const SDL_Color white = {.r = 255, .g = 255, .b = 255, .a = 255};
     const int padding = 20;
     const int drawing_rect_size = 560;
+    LabelledImageData& img_provider;
+    bool input_cursor_on = true;
 
 public:
     AppMode mode;
@@ -35,9 +38,11 @@ public:
     int window_height;
     bool should_quit;
     std::unordered_map<std::string, bool> is_button_hovered;
+    std::unordered_map<std::string, bool> is_input_hovered;
+    std::unordered_map<std::string, InputInfo> input_data;
     int brush_radius = 0;
     const int ui_height = 100;
-    Graphix();
+    Graphix(LabelledImageData& img_provider);
     void putMousePathToImage();
     void reset(bool full);
     void drawAndManageButton(std::string text, int x, int y, int font_size);
@@ -45,5 +50,6 @@ public:
     void cycle(LabelledImageData &img_provider, std::function<Matrix(int)> guess, std::function<Matrix(const std::vector<uint8_t> &)> guess_user_drawn);
     void updateImage(const std::vector<uint8_t> &image);
     void free_textures();
+    void submitNumber(LabelledImageData& img_provider, std::function<Matrix(int)>);
     ~Graphix();
 };

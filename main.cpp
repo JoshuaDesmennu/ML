@@ -15,6 +15,8 @@ int main(int argc, char **argv)
 {
     std::mt19937 rng(std::random_device{}());
     std::vector<std::string> args(argv, argv + argc);
+    // std::vector<uint8_t> imageFileData = idx::read_file("./testing_images/testing_images.idx3-ubyte");
+    // std::vector<uint8_t> labelFileData = idx::read_file("./testing_labels/testing_labels.idx1-ubyte");
     std::vector<uint8_t> imageFileData = idx::read_file("./training_images/train-images.idx3-ubyte");
     std::vector<uint8_t> labelFileData = idx::read_file("./training_labels/train-labels.idx1-ubyte");
     auto [imgSizes, imgIndex] = idx::decode_idx(imageFileData);
@@ -43,7 +45,7 @@ int main(int argc, char **argv)
         input.values = std::vector<double>(image_data.begin(), image_data.end());
         return network.passthrough(input.scale(1.0 / 255.0).flatten());
     };
-    Graphix gfx;
+    Graphix gfx(training_set);
     gfx.changeImage(gfx.selectedImage, training_set, guess);
     while (!gfx.should_quit)
     {
