@@ -307,11 +307,11 @@ void Graphix::cycle(LabelledImageData &img_provider, std::function<Matrix(int)> 
                 }
                 if (is_button_hovered["Switch Mode"]) {
                     mode = mode == SCROLL_THROUGH ? USER_DRAW : SCROLL_THROUGH;
+                    reset(true);
                     if (mode == SCROLL_THROUGH) {
                         image_data = img_provider.getRawImageBytes(selectedImage);
                         prediction = guess(selectedImage);
                     }
-                    reset(true);
                 }
                 if (is_button_hovered["Main Menu"]) {
                     mode = START;
@@ -327,7 +327,6 @@ void Graphix::cycle(LabelledImageData &img_provider, std::function<Matrix(int)> 
         else if (e.type == SDL_MOUSEBUTTONUP)
         {
             if (mode == USER_DRAW) {
-                image_data = img_provider.getRawImageBytes(selectedImage);
                 prediction = guess_user_drawn(image_data);
             }
 
