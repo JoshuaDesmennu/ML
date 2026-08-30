@@ -16,12 +16,12 @@ namespace idx {
 class LabelledImageData {
     std::vector<uint8_t> labels;
     std::vector<uint8_t> imagedata;
+    std::vector<std::vector<Matrix>> imagesByLabel;
 
     public:
     int width;
     int height;
     int entry_count;
-    std::vector<std::vector<Matrix>> imagesByLabel;
 
     LabelledImageData(std::vector<uint8_t> labels, std::vector<uint8_t> imagedata, int width, int height, int entry_count);
     Matrix getEntryImage(int index);

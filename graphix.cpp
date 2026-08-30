@@ -11,6 +11,7 @@ Graphix::Graphix(LabelledImageData& img_provider) : img_provider(img_provider)
     should_quit = false;
     image_data = std::vector<uint8_t>(28 * 28, 0);
     prediction = Matrix(10, 1);
+    ticks_ms = SDL_GetTicks64();
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
@@ -161,6 +162,8 @@ void Graphix::reset(bool full) {
             is_button_hovered[item.first] = false;
         }
         selectedImage = 0;
+        cursor_blink_timer = 0;
+        input_cursor_on = true;
     }
 }
 
@@ -175,14 +178,14 @@ void Graphix::drawAndManageButton(std::string text, int x, int y, int font_size)
     TTF_SetFontSize(font, font_size);
     SDL_Rect rect;
     TTF_SizeText(font, text.c_str(), &rect.w, &rect.h);
-    rect.x = x + 10;
-    rect.y = y + 10;
+    rect.x = x + button_padding;
+    rect.y = y + button_padding;
 
     SDL_Rect border = rect;
-    border.x -= 10;
-    border.y -= 10;
-    border.w += 20;
-    border.h += 20;
+    border.x -= button_padding;
+    border.y -= button_padding;
+    border.w += 2 * button_padding;
+    border.h += 2 * button_padding;
 
     // set hovering flag if within bounding box
     is_button_hovered[text] = (mouse_coords.first > border.x && mouse_coords.first < border.x + border.w && mouse_coords.second > border.y && mouse_coords.second < border.y + border.h);
@@ -231,6 +234,10 @@ void Graphix::cycle(LabelledImageData &img_provider, std::function<Matrix(int)> 
 {
     if (should_quit)
         return;
+
+    uint64_t new_ticks = SDL_GetTicks64();
+    const uint64_t dt = new_ticks - ticks_ms;
+    ticks_ms = new_ticks;
 
     // handle events like clicks and that
     while (SDL_PollEvent(&e) != 0)
@@ -321,6 +328,8 @@ void Graphix::cycle(LabelledImageData &img_provider, std::function<Matrix(int)> 
                 }
                 if (is_input_hovered["index"]) {
                     input_data["index"].is_in_focus = true;
+                    input_cursor_on = true;
+                    cursor_blink_timer = 0;
                 } else {
                     input_data["index"].is_in_focus = false;
                 }
@@ -343,6 +352,12 @@ void Graphix::cycle(LabelledImageData &img_provider, std::function<Matrix(int)> 
         }
     }
 
+    cursor_blink_timer += dt;
+    if (cursor_blink_timer >= cursor_blink_period) {
+        cursor_blink_timer = 0;
+        input_cursor_on = !input_cursor_on;
+    }
+
     // clear the screen for drawing
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
@@ -351,14 +366,17 @@ void Graphix::cycle(LabelledImageData &img_provider, std::function<Matrix(int)> 
     if (mode == SCROLL_THROUGH || mode == USER_DRAW)
     {
         int next_w, next_h;
+        int next_x;
         std::string text = "Main Menu";
         TTF_SetFontSize(font, 30);
         TTF_SizeText(font, text.c_str(), &next_w, &next_h);
-        drawAndManageButton(text, padding, padding, 30);
+        next_x = padding;
+        drawAndManageButton(text, next_x, padding, 30);
 
         text = "Switch Mode";
+        next_x += next_w + padding + 2 * button_padding;
         TTF_SizeText(font, text.c_str(), &next_w, &next_h);
-        drawAndManageButton(text, padding + next_w + padding, padding, 30);
+        drawAndManageButton(text, next_x, padding, 30);
 
         TTF_SetFontSize(font, 25);
         const SDL_Rect border_rectangle = {
@@ -463,25 +481,26 @@ void Graphix::cycle(LabelledImageData &img_provider, std::function<Matrix(int)> 
         std::string text = "Next";
         TTF_SetFontSize(font, 30);
         TTF_SizeText(font, text.c_str(), &next_w, &next_h);
-        int next_x = window_width - padding - next_w - 20;
+        int next_x = window_width - padding - next_w - 2 * button_padding;
         drawAndManageButton(text, next_x, padding, 30);
 
         text = "Back";
         TTF_SizeText(font, text.c_str(), &next_w, &next_h);
-        next_x -= padding + next_w + 20;
+        next_x -= padding + next_w + 2 * button_padding;
         drawAndManageButton(text, next_x, padding, 30);
 
         // draw input box
         SDL_Rect placeholder_rect;
         TTF_SizeText(font, input_data["index"].placeholder.c_str(), &placeholder_rect.w, &placeholder_rect.h);
-        placeholder_rect.x = next_x - placeholder_rect.w - padding;
-        placeholder_rect.y = padding + 10;
+        next_x -= padding + placeholder_rect.w + 2 * button_padding;
+        placeholder_rect.x = next_x + button_padding;
+        placeholder_rect.y = padding + button_padding;
 
         SDL_Rect input_border_rect = placeholder_rect;
-        input_border_rect.x -= 10;
-        input_border_rect.y -= 10;
-        input_border_rect.w += 20;
-        input_border_rect.h += 20;
+        input_border_rect.x -= button_padding;
+        input_border_rect.y -= button_padding;
+        input_border_rect.w += 2 * button_padding;
+        input_border_rect.h += 2 * button_padding;
 
         SDL_RenderDrawRect(renderer, &input_border_rect);
 
@@ -501,10 +520,12 @@ void Graphix::cycle(LabelledImageData &img_provider, std::function<Matrix(int)> 
                     SDL_RenderCopy(renderer, textures[input_data["index"].value], NULL, &input_text_rect);
                 }
             }
-            const int cursor_x = input_text_rect.x + input_text_rect.w + 2;
-            SDL_RenderDrawLine(renderer, cursor_x, input_text_rect.y, cursor_x, input_text_rect.y + input_text_rect.h);
+            if (input_cursor_on) {
+                const int cursor_x = input_text_rect.x + input_text_rect.w + 2;
+                SDL_RenderDrawLine(renderer, cursor_x, input_text_rect.y, cursor_x, input_text_rect.y + input_text_rect.h);
+            }
         } else {
-            SDL_SetTextureColorMod(textures[input_data["index"].placeholder], 127, 127, 127);
+            SDL_SetTextureColorMod(textures[input_data["index"].placeholder], 160, 160, 160);
             SDL_RenderCopy(renderer, textures[input_data["index"].placeholder], NULL, &placeholder_rect);
         }
 
@@ -514,8 +535,8 @@ void Graphix::cycle(LabelledImageData &img_provider, std::function<Matrix(int)> 
             drawing_rect_size,
             drawing_rect_size,
         };
-        index_rect.x += 10;
-        index_rect.y += 10;
+        index_rect.x += button_padding;
+        index_rect.y += button_padding;
         text = std::to_string(selectedImage + 1) + " / " + std::to_string(img_provider.entry_count);
         TTF_SetFontSize(font, 25);
         SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text.c_str(), white);
@@ -524,10 +545,10 @@ void Graphix::cycle(LabelledImageData &img_provider, std::function<Matrix(int)> 
         TTF_SizeText(font, text.c_str(), &index_rect.w, &index_rect.h);
 
         SDL_Rect index_border = index_rect;
-        index_border.x -= 10;
-        index_border.y -= 10;
-        index_border.w += 20;
-        index_border.h += 20;
+        index_border.x -= button_padding;
+        index_border.y -= button_padding;
+        index_border.w += 2 * button_padding;
+        index_border.h += 2 * button_padding;
 
         SDL_RenderFillRect(renderer, &index_border);
         SDL_SetTextureColorMod(textures[text], 0, 0, 0);
