@@ -40,6 +40,10 @@ make
 ./mia
 ```
 
+## Tested Distros
+
+I tested mainly on Zorin OS and Ubuntu. You typically don't need any extra libraries to build though.
+
 ## AI Usage
 
 I'm a strong believer in code it up yourself. But of course, I'm still human. The only AI usage was for error finding
