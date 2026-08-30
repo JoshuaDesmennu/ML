@@ -1,5 +1,7 @@
 #include "graphix.hpp"
 #include <chrono>
+#include "utils.hpp"
+#include <filesystem>
 
 Graphix::Graphix(LabelledImageData& img_provider) : img_provider(img_provider)
 {
@@ -21,7 +23,7 @@ Graphix::Graphix(LabelledImageData& img_provider) : img_provider(img_provider)
         throw std::runtime_error("Could not initialize TTF");
     }
 
-    font = TTF_OpenFont("./intel_variable.ttf", 25);
+    font = TTF_OpenFont((getDataPath() / "intel_variable.ttf").c_str(), 25);
     if (font == nullptr)
     {
         TTF_Quit();

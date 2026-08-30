@@ -10,15 +10,18 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include "graphix.hpp"
+#include <cstdlib>
+#include <filesystem>
+#include "utils.hpp"
 
 int main(int argc, char **argv)
 {
     std::mt19937 rng(std::random_device{}());
     std::vector<std::string> args(argv, argv + argc);
-    // std::vector<uint8_t> imageFileData = idx::read_file("./testing_images/testing_images.idx3-ubyte");
-    // std::vector<uint8_t> labelFileData = idx::read_file("./testing_labels/testing_labels.idx1-ubyte");
-    std::vector<uint8_t> imageFileData = idx::read_file("./training_images/train-images.idx3-ubyte");
-    std::vector<uint8_t> labelFileData = idx::read_file("./training_labels/train-labels.idx1-ubyte");
+    // std::vector<uint8_t> imageFileData = idx::read_file(getDataPath() / "testing_images/testing_images.idx3-ubyte");
+    // std::vector<uint8_t> labelFileData = idx::read_file(getDataPath() / "testing_labels/testing_labels.idx1-ubyte");
+    std::vector<uint8_t> imageFileData = idx::read_file(getDataPath() / "training_images/train-images.idx3-ubyte");
+    std::vector<uint8_t> labelFileData = idx::read_file(getDataPath() / "training_labels/train-labels.idx1-ubyte");
     auto [imgSizes, imgIndex] = idx::decode_idx(imageFileData);
     auto [lblSizes, lblIndex] = idx::decode_idx(labelFileData);
 
@@ -31,7 +34,7 @@ int main(int argc, char **argv)
         imgSizes[1],
         imgSizes[2]);
 
-    NN network("best_nn.nn");
+    NN network(getDataPath() / "best_nn.nn");
     auto data = training_set.getRawImageBytes(2);
     auto guess = [&](int index)
     {
