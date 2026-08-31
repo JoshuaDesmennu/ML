@@ -15,7 +15,7 @@ data, I make use of the [MNIST database](https://github.com/cvdfoundation/mnist)
 1. Clone the repository
 
 ```sh
-git clone https://github.com/JoshuaDesmennu/ML.git
+$ git clone https://github.com/JoshuaDesmennu/ML.git
 ```
 
 
@@ -23,26 +23,26 @@ git clone https://github.com/JoshuaDesmennu/ML.git
 
 Ubuntu
 ```sh
-sudo apt-get install libsdl2-dev
+$ sudo apt-get install libsdl2-dev libsdl2-ttf-dev
 ```
 
 
 3. Run make
 
 ```sh
-make
+$ make
 ```
 
 
 4. Run the executable
 
 ```sh
-./mia
+$ ./main
 ```
 
 ## Tested Distros
 
-I tested mainly on Zorin OS and Ubuntu. You typically don't need any extra libraries to build though.
+I tested mainly on Zorin OS and Ubuntu.
 
 ## AI Usage
 
